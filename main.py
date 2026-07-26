@@ -164,42 +164,12 @@ def deduct_user_credit(user_id="default_user"):
 def all_users():
     return load_users()
 
-# ============== SESSION FACTORIES & PROXY ==============
-def create_session(use_proxy=False, proxy_string=None):
-    session = requests.Session()
-    session.mount('https://', requests.adapters.HTTPAdapter(
-        pool_connections=10, pool_maxsize=10, max_retries=3, pool_block=False
-    ))
-    if use_proxy and proxy_string:
-        parsed = urlparse(proxy_string)
-        proxy_url = f"{parsed.scheme}://{parsed.netloc}"
-        PROXY_CONFIG['use_proxy'] = True
-        PROXY_CONFIG['http'] = proxy_url
-        PROXY_CONFIG['https'] = proxy_url
-        session.proxies = {'http': proxy_url, 'https': proxy_url}
-        logger.info(f"Proxy set: {proxy_url}")
-    else:
-        PROXY_CONFIG['use_proxy'] = False
-        PROXY_CONFIG['http'] = None
-        PROXY_CONFIG['https'] = None
-    return session
-
-uidai_session = None
-def get_uidai_session():
-    global uidai_session
-    if uidai_session is None:
-        uidai_session = create_session(False)
-    return uidai_session
-
-telegram_session = None
-def get_telegram_session():
-    global telegram_session
-    if telegram_session is None:
-        if PROXY_CONFIG['use_proxy']:
-            telegram_session = create_session(True, PROXY_CONFIG['https'])
-        else:
-            telegram_session = create_session(False)
-    return telegram_session
+# ============== PROXY CONFIG & SETUP ==============
+PROXY_CONFIG = {
+    'use_proxy': False,
+    'http': None,
+    'https': None
+}
 
 def setup_proxy():
     proxy_url = os.environ.get('PROXY_URL', '').strip()
@@ -210,13 +180,55 @@ def setup_proxy():
                 PROXY_CONFIG['use_proxy'] = True
                 PROXY_CONFIG['http'] = proxy_url
                 PROXY_CONFIG['https'] = proxy_url
-                logger.info(f"Proxy: {proxy_url}")
+                logger.info(f"Proxy initialized: {proxy_url}")
             else:
-                logger.warning("Invalid PROXY_URL scheme — running without proxy.")
+                logger.warning(f"Invalid PROXY_URL scheme '{parsed.scheme}'. Supported schemes: http, https, socks5, socks5h")
         except Exception as e:
-            logger.error(f"Invalid PROXY_URL: {e} — running without proxy.")
+            logger.error(f"Invalid PROXY_URL: {e}")
     else:
         PROXY_CONFIG['use_proxy'] = False
+        logger.info("No PROXY_URL set. Direct connection will be used (Note: UIDAI blocks foreign cloud IPs like Railway).")
+
+setup_proxy()
+
+def create_session(use_proxy=None):
+    session = requests.Session()
+    session.mount('https://', requests.adapters.HTTPAdapter(
+        pool_connections=10, pool_maxsize=10, max_retries=3, pool_block=False
+    ))
+    if use_proxy is None:
+        use_proxy = PROXY_CONFIG['use_proxy']
+    if use_proxy and PROXY_CONFIG['http']:
+        session.proxies = {
+            'http': PROXY_CONFIG['http'],
+            'https': PROXY_CONFIG['https']
+        }
+        logger.info(f"Session created using proxy: {PROXY_CONFIG['http']}")
+    return session
+
+uidai_session = None
+def get_uidai_session():
+    global uidai_session
+    if uidai_session is None:
+        uidai_session = create_session()
+    elif PROXY_CONFIG['use_proxy'] and PROXY_CONFIG['http']:
+        uidai_session.proxies = {
+            'http': PROXY_CONFIG['http'],
+            'https': PROXY_CONFIG['https']
+        }
+    return uidai_session
+
+telegram_session = None
+def get_telegram_session():
+    global telegram_session
+    if telegram_session is None:
+        telegram_session = create_session()
+    elif PROXY_CONFIG['use_proxy'] and PROXY_CONFIG['http']:
+        telegram_session.proxies = {
+            'http': PROXY_CONFIG['http'],
+            'https': PROXY_CONFIG['https']
+        }
+    return telegram_session
 
 # ============== TELEGRAM & AUTH HELPERS ==============
 def is_channel_member(user_id):
@@ -465,7 +477,6 @@ class PDFPasswordCracker:
 # ============== AADHAAR SERVICE CLASS ==============
 class AadhaarService:
     def __init__(self):
-        self.session = get_uidai_session()
         self.base_headers = {
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'en_IN',
@@ -482,8 +493,13 @@ class AadhaarService:
             'sec-ch-ua-mobile': '?1',
             'sec-ch-ua-platform': '"Android"',
         }
-        self.session.headers.update(self.base_headers)
         self.cracker = PDFPasswordCracker()
+
+    @property
+    def session(self):
+        s = get_uidai_session()
+        s.headers.update(self.base_headers)
+        return s
 
     def generate_transaction_id(self):
         return str(uuid.uuid4())
@@ -522,10 +538,11 @@ class AadhaarService:
 
     def get_captcha(self):
         transaction_id = self.generate_transaction_id()
-        self.session.headers.update({'x-request-id': transaction_id, 'transactionId': transaction_id})
+        sess = self.session
+        sess.headers.update({'x-request-id': transaction_id, 'transactionId': transaction_id})
         captcha_data = {'captchaLength': '6', 'captchaType': '2', 'audioCaptchaRequired': True}
         try:
-            response = self.session.post(
+            response = sess.post(
                 'https://tathya.uidai.gov.in/audioCaptchaService/api/captcha/v3/generation',
                 json=captcha_data, timeout=15
             )
@@ -548,12 +565,19 @@ class AadhaarService:
                 clean_base64 = f"data:image/png;base64,{captcha_base64}"
                 
             return clean_base64, captcha_txn_id, transaction_id, None
+        except requests.exceptions.Timeout:
+            logger.error("UIDAI Captcha connection timed out.")
+            return None, None, None, "UIDAI Server Connection Timed Out. (Note: Foreign datacenter IPs like Railway are blocked by UIDAI — Please set PROXY_URL env var in Railway)"
+        except requests.exceptions.ConnectionError as ce:
+            logger.error(f"UIDAI Connection error: {ce}")
+            return None, None, None, "UIDAI Connection Failed. Please set PROXY_URL env var in Railway with an Indian Proxy."
         except Exception as e:
             logger.error(f"Error getting captcha: {str(e)}")
             return None, None, None, str(e)
 
     def send_eid_otp(self, mobile, name, captcha_code, captcha_txn_id, transaction_id):
-        self.session.headers.update({'x-request-id': transaction_id, 'transactionId': transaction_id})
+        sess = self.session
+        sess.headers.update({'x-request-id': transaction_id, 'transactionId': transaction_id})
         request_data = {
             'mobileNumber': mobile, 'dob': None, 'email': None,
             'name': name.upper(), 'option': 'EID', 'otp': None,
@@ -561,7 +585,7 @@ class AadhaarService:
             'captcha': captcha_code, 'resendOtp': False
         }
         try:
-            response = self.session.post(
+            response = sess.post(
                 'https://tathya.uidai.gov.in/retrieveEidUid/ext/v1/generic/retrieveuideid',
                 json=request_data, timeout=15
             )
@@ -579,11 +603,16 @@ class AadhaarService:
                     return False, None, 'Invalid UIDAI response format'
             else:
                 return False, None, f'HTTP {response.status_code}'
+        except requests.exceptions.Timeout:
+            return False, None, "UIDAI Server Timed Out. Please set PROXY_URL env var in Railway."
+        except requests.exceptions.ConnectionError:
+            return False, None, "UIDAI Connection Failed. Please set PROXY_URL env var in Railway."
         except Exception as e:
             return False, None, str(e)
 
     def verify_eid_otp(self, mobile, name, otp_code, otp_txn_id, captcha_txn_id, captcha_code):
-        self.session.headers.update({'x-request-id': self.generate_transaction_id()})
+        sess = self.session
+        sess.headers.update({'x-request-id': self.generate_transaction_id()})
         verify_data = {
             'mobileNumber': mobile, 'dob': None, 'name': name.upper(),
             'email': None, 'option': 'EID', 'otp': otp_code,
@@ -591,7 +620,7 @@ class AadhaarService:
             'captcha': captcha_code, 'resendOtp': False
         }
         try:
-            response = self.session.post(
+            response = sess.post(
                 'https://tathya.uidai.gov.in/retrieveEidUid/ext/v1/generic/retrieveuideid',
                 json=verify_data, timeout=15
             )
@@ -613,18 +642,23 @@ class AadhaarService:
                     return False, None, None, error_msg
             else:
                 return False, None, None, f'HTTP {response.status_code}'
+        except requests.exceptions.Timeout:
+            return False, None, None, "UIDAI Server Timed Out. Please set PROXY_URL env var in Railway."
+        except requests.exceptions.ConnectionError:
+            return False, None, None, "UIDAI Connection Failed. Please set PROXY_URL env var in Railway."
         except Exception as e:
             return False, None, None, str(e)
 
     def send_aadhaar_otp(self, eid_number, captcha_value, captcha_txn_id, transaction_id):
-        self.session.headers.update({'x-request-id': transaction_id, 'transactionId': transaction_id})
+        sess = self.session
+        sess.headers.update({'x-request-id': transaction_id, 'transactionId': transaction_id})
         otp_request_data = {
             'eidNumber': eid_number, 'idType': 'eid',
             'captchaTxnId': captcha_txn_id, 'captchaValue': captcha_value,
             'transactionId': transaction_id, 'resendOTP': False
         }
         try:
-            response = self.session.post(
+            response = sess.post(
                 'https://tathya.uidai.gov.in/unifiedAppAuthService/api/v2/generate/aadhaar/otp',
                 json=otp_request_data, timeout=15
             )
@@ -639,14 +673,19 @@ class AadhaarService:
                     return False, None, message
             else:
                 return False, None, f"HTTP {response.status_code}"
+        except requests.exceptions.Timeout:
+            return False, None, "UIDAI Server Timed Out. Please set PROXY_URL env var in Railway."
+        except requests.exceptions.ConnectionError:
+            return False, None, "UIDAI Connection Failed. Please set PROXY_URL env var in Railway."
         except Exception as e:
             return False, None, str(e)
 
     def download_aadhaar_pdf(self, eid_number, otp, otp_txn_id, transaction_id, mask=False):
-        self.session.headers.update({'x-request-id': transaction_id, 'transactionId': transaction_id})
+        sess = self.session
+        sess.headers.update({'x-request-id': transaction_id, 'transactionId': transaction_id})
         download_data = {'eid': eid_number, 'mask': mask, 'otp': otp, 'otpTxnId': otp_txn_id}
         try:
-            response = self.session.post(
+            response = sess.post(
                 'https://tathya.uidai.gov.in/downloadAadhaarService/api/aadhaar/download',
                 json=download_data, timeout=20
             )
@@ -660,6 +699,10 @@ class AadhaarService:
                     return False, None, error_msg
             else:
                 return False, None, f"HTTP {response.status_code}"
+        except requests.exceptions.Timeout:
+            return False, None, "UIDAI Server Timed Out. Please set PROXY_URL env var in Railway."
+        except requests.exceptions.ConnectionError:
+            return False, None, "UIDAI Connection Failed. Please set PROXY_URL env var in Railway."
         except Exception as e:
             return False, None, str(e)
 
