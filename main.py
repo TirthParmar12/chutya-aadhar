@@ -36,7 +36,7 @@ TEMP_DIR = os.path.join(BASE_DIR, "temp_downloads")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Telegram & System Constants
-TELEGRAM_BOT_TOKEN = "8665531163:AAEdnWXrpsVjPRdXEqr4xIn1StlYfNVH9ko"
+TELEGRAM_BOT_TOKEN = "8665531163:AAHBZIdUvBehN9jMBvKG3XrsMBHvMZCQl2I"
 CHANNEL_USERNAME = "@UR_IMAGE"
 CHANNEL_LINK = "https://t.me/UR_IMAGE"
 OWNER_USERNAME = "@T_p0907"
