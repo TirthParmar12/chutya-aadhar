@@ -1,0 +1,50 @@
+{
+  "123456789": {
+    "password": "testpass",
+    "credits": 10,
+    "lifetime": false,
+    "referred_by": null,
+    "referral_count": 2,
+    "joined": "2026-07-25T23:23:20"
+  },
+  "7759665144": {
+    "password": "ownerpass",
+    "credits": 999,
+    "lifetime": true,
+    "referred_by": null,
+    "referral_count": 0,
+    "joined": "2026-07-25T23:23:20"
+  },
+  "8954728708": {
+    "credits": 20,
+    "lifetime": true,
+    "referred_by": null,
+    "referral_count": 0,
+    "joined": "2026-07-25T23:35:30.770593",
+    "password": "1ViK5hwH"
+  },
+  "7818427054": {
+    "credits": 1,
+    "lifetime": false,
+    "referred_by": null,
+    "referral_count": 0,
+    "joined": "2026-07-25T23:39:45.541379",
+    "password": "MKT46zbX"
+  },
+  "5821060906": {
+    "credits": 11,
+    "lifetime": false,
+    "referred_by": null,
+    "referral_count": 0,
+    "joined": "2026-07-25T23:41:53.786404",
+    "password": "bkSH7q04"
+  },
+  "8720218544": {
+    "credits": 1,
+    "lifetime": false,
+    "referred_by": null,
+    "referral_count": 0,
+    "joined": "2026-07-26T00:13:58.517739",
+    "password": "hekGLamY"
+  }
+}

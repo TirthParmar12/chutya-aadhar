@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>e-Aadhaar Portal & PDF Auto-Unlocker</title>
+  <meta name="description" content="Official UIDAI e-Aadhaar PDF Downloader & Automatic Password Cracker Web Portal">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- LOGIN SCREEN (Glassmorphism card) -->
+  <div id="login-screen" style="display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 40px); padding: 24px; position: relative; z-index: 10;">
+    <div class="glass-card" style="max-width: 450px; width: 100%; text-align: center; box-shadow: var(--shadow-purple); border-color: rgba(121, 40, 202, 0.2);">
+      <div class="brand-icon" style="margin: 0 auto 16px;">A</div>
+      <h2 style="font-family:'Outfit'; font-size: 28px; margin-bottom: 8px;">Aadhaar Portal Login</h2>
+      <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">Enter your Telegram Bot credentials to access the portal</p>
+      
+      <div class="form-group" style="text-align: left;">
+        <label class="form-label" for="login-uid">User ID (Telegram ID)</label>
+        <input type="text" id="login-uid" class="form-input" placeholder="e.g. 7759665144">
+      </div>
+      
+      <div class="form-group" style="text-align: left;">
+        <label class="form-label" for="login-password">Password</label>
+        <input type="password" id="login-password" class="form-input" placeholder="••••••••">
+      </div>
+      
+      <button class="btn-primary" onclick="handleLogin()" style="margin-top: 10px;">
+        <span>Sign In</span>
+      </button>
+      
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--card-border);">
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+          Don't have an account or lost your password?
+        </p>
+        <a id="bot-login-link-btn" href="https://t.me/UR_IMAGE" target="_blank" class="btn-secondary" style="text-decoration:none; display:inline-block; margin-top:10px; border-color: var(--primary-cyan); color: var(--primary-cyan); font-size: 14px;">
+          🤖 Get User ID & Password
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTAL CONTAINER (Hidden by default) -->
+  <div id="portal-screen" style="display: none; flex-direction: column; min-height: 100vh;">
+    <!-- HEADER NAVBAR -->
+    <header>
+      <div class="nav-container">
+        <a href="#" class="brand">
+          <div class="brand-icon">A</div>
+          <span class="brand-title">Aadhaar Portal</span>
+        </a>
+        <div class="user-status-pill">
+          <div class="credit-badge">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span id="nav-credit-count">Loading...</span>
+          </div>
+          <button onclick="handleLogout()" class="logout-btn" style="background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; padding: 6px 14px; border-radius: var(--radius-full); cursor: pointer; font-size: 13px; font-weight: 600; margin-left: 10px; transition: all 0.2s;">
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+
+  <!-- MAIN CONTAINER -->
+  <main>
+
+    <!-- HERO SECTION -->
+    <section class="hero-section">
+      <div class="hero-tag">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Direct UIDAI Integration & Fast Auto-Unlock
+      </div>
+      <h1 class="hero-title">Download & Unlock <span>e-Aadhaar PDF</span></h1>
+      <p class="hero-subtitle">Retrieve your official e-Aadhaar card using Mobile Number, Aadhaar Number, or EID. Auto-decrypt password protected PDFs instantly.</p>
+    </section>
+
+    <!-- TABS NAVIGATION -->
+    <div class="tabs-header">
+      <button class="tab-btn active" onclick="switchTab('mobile-tab')">
+        📱 Mobile Search
+      </button>
+      <button class="tab-btn" onclick="switchTab('aadhaar-tab')">
+        🆔 Aadhaar / EID Search
+      </button>
+      <button class="tab-btn" onclick="switchTab('unlock-tab')">
+        🔓 PDF Password Cracker
+      </button>
+      <button class="tab-btn" onclick="switchTab('credits-tab')">
+        💎 Credits & Plans
+      </button>
+      <button class="tab-btn" onclick="switchTab('admin-tab')">
+        👑 Admin Console
+      </button>
+    </div>
+
+    <!-- TAB 1: MOBILE SEARCH WIZARD -->
+    <section id="mobile-tab" class="tab-content active">
+      <div class="glass-card">
+        
+        <!-- WIZARD PROGRESS BAR -->
+        <div class="wizard-progress">
+          <div id="m-progress-line" class="wizard-progress-bar"></div>
+          <div id="m-step-1-node" class="step-node active">
+            <div class="step-number">1</div>
+            <div class="step-label">Mobile & Name</div>
+          </div>
+          <div id="m-step-2-node" class="step-node">
+            <div class="step-number">2</div>
+            <div class="step-label">EID OTP</div>
+          </div>
+          <div id="m-step-3-node" class="step-node">
+            <div class="step-number">3</div>
+            <div class="step-label">PDF Captcha</div>
+          </div>
+          <div id="m-step-4-node" class="step-node">
+            <div class="step-number">4</div>
+            <div class="step-label">Download</div>
+          </div>
+        </div>
+
+        <!-- STEP 1: MOBILE INPUT -->
+        <div id="m-step-1" class="wizard-step-pane">
+          <div class="form-group">
+            <label class="form-label" for="m-mobile">10-Digit Mobile Number</label>
+            <input type="text" id="m-mobile" class="form-input" placeholder="e.g. 9876543210" maxlength="10">
+            <div class="form-help">OTP will be sent to this number via UIDAI.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-name">Full Name (as on Aadhaar)</label>
+            <input type="text" id="m-name" class="form-input" placeholder="e.g. RAJESH KUMAR" value="MR">
+            <div class="form-help">Enter full name or keep 'MR' to proceed.</div>
+          </div>
+
+          <div class="captcha-container">
+            <div class="captcha-img-box" id="m-captcha-box-1">
+              <span style="color:#64748b; font-size:12px;">Loading Captcha...</span>
+            </div>
+            <button type="button" class="reload-btn" onclick="loadCaptcha('m-captcha-box-1', 'm-captcha-1')">↻ Refresh</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-captcha-code-1">Enter Captcha</label>
+            <input type="text" id="m-captcha-code-1" class="form-input" placeholder="Enter characters above">
+          </div>
+
+          <button class="btn-primary" onclick="handleMobileStep1()">
+            <span>Send EID OTP</span>
+          </button>
+        </div>
+
+        <!-- STEP 2: VERIFY EID OTP -->
+        <div id="m-step-2" class="wizard-step-pane" style="display:none;">
+          <div style="text-align:center; margin-bottom:20px;">
+            <h3>Verify Mobile OTP</h3>
+            <p style="color:var(--text-muted); font-size:14px; margin-top:4px;">Enter the 6-digit OTP sent to your mobile</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="m-otp-1">6-Digit OTP</label>
+            <input type="text" id="m-otp-1" class="form-input" placeholder="e.g. 123456" maxlength="6">
+          </div>
+
+          <button class="btn-primary" onclick="handleMobileStep2()">Verify OTP & Fetch EID</button>
+          <button class="btn-secondary" onclick="resetMobileWizard()">Cancel & Restart</button>
+        </div>
+
+        <!-- STEP 3: CAPTCHA FOR PDF DOWNLOAD -->
+        <div id="m-step-3" class="wizard-step-pane" style="display:none;">
+          <div style="text-align:center; margin-bottom:20px;">
+            <h3 style="color:var(--accent-emerald);">Identity Verified ✓</h3>
+            <p id="m-verified-info" style="color:var(--text-muted); font-size:14px; margin-top:4px;"></p>
+          </div>
+
+          <div class="captcha-container">
+            <div class="captcha-img-box" id="m-captcha-box-2">
+              <span style="color:#64748b; font-size:12px;">Loading Captcha...</span>
+            </div>
+            <button type="button" class="reload-btn" onclick="loadCaptcha('m-captcha-box-2', 'm-captcha-2')">↻ Refresh</button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="m-captcha-code-2">Enter PDF Captcha</label>
+            <input type="text" id="m-captcha-code-2" class="form-input" placeholder="Enter characters above">
+          </div>
+
+          <button class="btn-primary" onclick="handleMobileStep3()">Send PDF Download OTP</button>
+        </div>
+
+        <!-- STEP 4: DOWNLOAD OTP & DECISION -->
+        <div id="m-step-4" class="wizard-step-pane" style="display:none;">
+          <div style="text-align:center; margin-bottom:20px;">
+            <h3>Final Step: PDF Download OTP</h3>
+            <p style="color:var(--text-muted); font-size:14px; margin-top:4px;">Enter the 6-digit OTP received on mobile to download unlocked Aadhaar PDF</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="m-pdf-otp">6-Digit Download OTP</label>
+            <input type="text" id="m-pdf-otp" class="form-input" placeholder="e.g. 654321" maxlength="6">
+          </div>
+
+          <button class="btn-primary" onclick="handleMobileStep4()">Download & Auto-Unlock PDF</button>
+        </div>
+
+        <!-- RESULT CARD CONTAINER -->
+        <div id="m-result-box" style="display:none;"></div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: AADHAAR / EID DIRECT SEARCH -->
+    <section id="aadhaar-tab" class="tab-content">
+      <div class="glass-card" style="max-width: 650px; margin: 0 auto;">
+        <h2 style="font-family:'Outfit'; font-size:24px; margin-bottom:8px;">Aadhaar / EID Direct Download</h2>
+        <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">Enter your 12-digit Aadhaar Number or 28-digit EID directly.</p>
+
+        <div id="a-step-1">
+          <div class="form-group">
+            <label class="form-label" for="a-eid">Aadhaar Number or EID</label>
+            <input type="text" id="a-eid" class="form-input" placeholder="12-digit Aadhaar (e.g. 123456789012) or EID">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="a-name">Name (for password decryption)</label>
+            <input type="text" id="a-name" class="form-input" placeholder="e.g. RAJESH KUMAR" value="MR">
+          </div>
+
+          <div class="captcha-container">
+            <div class="captcha-img-box" id="a-captcha-box">
+              <span style="color:#64748b; font-size:12px;">Loading Captcha...</span>
+            </div>
+            <button type="button" class="reload-btn" onclick="loadCaptcha('a-captcha-box', 'a-captcha')">↻ Refresh</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="a-captcha-code">Enter Captcha</label>
+            <input type="text" id="a-captcha-code" class="form-input" placeholder="Enter captcha characters">
+          </div>
+
+          <button class="btn-primary" onclick="handleAadhaarStep1()">Send Download OTP</button>
+        </div>
+
+        <div id="a-step-2" style="display:none;">
+          <div class="form-group">
+            <label class="form-label" for="a-otp">6-Digit OTP</label>
+            <input type="text" id="a-otp" class="form-input" placeholder="Enter 6-digit OTP" maxlength="6">
+          </div>
+
+          <button class="btn-primary" onclick="handleAadhaarStep2()">Download & Auto-Unlock PDF</button>
+          <button class="btn-secondary" onclick="resetAadhaarDirect()">Back</button>
+        </div>
+
+        <div id="a-result-box" style="display:none;"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: STANDALONE PDF UNLOCKER -->
+    <section id="unlock-tab" class="tab-content">
+      <div class="glass-card" style="max-width: 650px; margin: 0 auto;">
+        <h2 style="font-family:'Outfit'; font-size:24px; margin-bottom:8px;">PDF Password Cracker</h2>
+        <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">Already have an encrypted e-Aadhaar PDF file? Upload it here to remove password protection instantly.</p>
+
+        <form id="unlock-form" onsubmit="handleUnlockFile(event)">
+          <div class="dropzone" id="file-dropzone" onclick="document.getElementById('pdf-file-input').click()">
+            <div class="dropzone-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            </div>
+            <h4 style="font-size:16px; margin-bottom:4px;" id="dropzone-label">Click or Drag & Drop e-Aadhaar PDF</h4>
+            <p style="font-size:12px; color:var(--text-muted);">Supports password protected e-Aadhaar PDFs</p>
+            <input type="file" id="pdf-file-input" accept="application/pdf" style="display:none;" onchange="updateFileName(this)">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="u-name">Name on Aadhaar (for password cracking)</label>
+            <input type="text" id="u-name" class="form-input" placeholder="e.g. RAJESH KUMAR" required>
+            <div class="form-help">Password combination will be tested using first 4/6 letters + birth year patterns.</div>
+          </div>
+
+          <button type="submit" class="btn-primary">Unlock PDF File</button>
+        </form>
+
+        <div id="u-result-box" style="display:none;"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: CREDITS & PRICING -->
+    <section id="credits-tab" class="tab-content">
+      <div class="pricing-grid" id="plans-container">
+        <!-- Dyn-loaded plans -->
+      </div>
+
+      <div class="referral-card">
+        <h3 style="font-family:'Outfit'; font-size:20px; color:#fff; margin-bottom:6px;">Earn Free Credits (Referral Link)</h3>
+        <p style="color:var(--text-muted); font-size:14px;">Share your link — earn +2 free credits per user who visits using your link.</p>
+
+        <div class="ref-input-group">
+          <input type="text" id="ref-link-val" class="form-input" readonly value="Loading link...">
+          <button class="copy-btn" onclick="copyReferralLink()">Copy Link</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: ADMIN CONSOLE -->
+    <section id="admin-tab" class="tab-content">
+      <div class="glass-card" style="max-width: 700px; margin: 0 auto;">
+        <h2 style="font-family:'Outfit'; font-size:24px; margin-bottom:16px;">Admin Statistics & Control</h2>
+        
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:24px;">
+          <div style="background:rgba(255,255,255,0.04); border:1px solid var(--card-border); padding:16px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:24px; font-weight:800; color:var(--primary-cyan);" id="adm-users">0</div>
+            <div style="font-size:12px; color:var(--text-muted);">Total Users</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04); border:1px solid var(--card-border); padding:16px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:24px; font-weight:800; color:var(--accent-purple);" id="adm-lifetime">0</div>
+            <div style="font-size:12px; color:var(--text-muted);">Lifetime Users</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04); border:1px solid var(--card-border); padding:16px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:24px; font-weight:800; color:var(--accent-emerald);" id="adm-credits">0</div>
+            <div style="font-size:12px; color:var(--text-muted);">Active Credits</div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--card-border); padding-top:20px;">
+          <h4 style="margin-bottom:12px;">Grant Credits to User</h4>
+          <div class="form-group">
+            <label class="form-label">User ID</label>
+            <input type="text" id="adm-target-user" class="form-input" value="default_user">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount (-1 for Lifetime)</label>
+            <input type="number" id="adm-target-amount" class="form-input" value="10">
+          </div>
+          <button class="btn-primary" onclick="handleAdminAddCredits()">Grant Credits</button>
+        </div>
+
+        <div style="border-top: 1px solid var(--card-border); padding-top: 20px; margin-top: 24px;">
+          <h4 style="margin-bottom: 12px; font-family:'Outfit'; font-size: 18px;">Registered Users List</h4>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <input type="text" id="adm-user-search" class="form-input" placeholder="🔍 Search by User ID..." oninput="filterAdminUsersTable()">
+          </div>
+
+          <div style="overflow-x: auto; background: rgba(10, 15, 26, 0.4); border: 1px solid var(--card-border); border-radius: var(--radius-md); max-height: 350px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+              <thead>
+                <tr style="background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--card-border);">
+                  <th style="padding: 12px 16px; color: var(--primary-cyan); font-weight: 600;">User ID</th>
+                  <th style="padding: 12px 16px; color: var(--primary-cyan); font-weight: 600;">Password</th>
+                  <th style="padding: 12px 16px; color: var(--primary-cyan); font-weight: 600;">Credits</th>
+                  <th style="padding: 12px 16px; color: var(--primary-cyan); font-weight: 600;">Type</th>
+                  <th style="padding: 12px 16px; color: var(--primary-cyan); font-weight: 600;">Referrals</th>
+                  <th style="padding: 12px 16px; color: var(--primary-cyan); font-weight: 600;">Joined</th>
+                </tr>
+              </thead>
+              <tbody id="adm-users-table-body">
+                <!-- Dyn-loaded rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
